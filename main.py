@@ -172,9 +172,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         quick_think_llm: document.getElementById('deep_think_llm').value.replace('-mini', '') + '-mini'
                     })
                 });
-                const data = await response.json();
-                resultContent.textContent = JSON.stringify(data, null, 2);
-                result.classList.add('show');
+                if (!response.ok) {
+                    const errText = await response.text();
+                    resultContent.textContent = 'Loi ' + response.status + ': ' + errText;
+                    result.classList.add('show');
+                } else {
+                    const data = await response.json();
+                    resultContent.textContent = JSON.stringify(data, null, 2);
+                    result.classList.add('show');
+                }
             } catch (error) {
                 resultContent.textContent = 'Loi: ' + error.message;
                 result.classList.add('show');
