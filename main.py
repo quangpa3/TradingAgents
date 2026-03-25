@@ -46,19 +46,15 @@ async def get_models(provider: str = "openai"):
     elif provider == "google":
         return {"models": ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]}
     elif provider == "openrouter":
-        api_key = os.getenv("OPENROUTER_API_KEY")
-        if api_key:
-            try:
-                resp = requests.get("https://openrouter.ai/api/v1/models", 
-                    headers={"Authorization": f"Bearer {api_key}"}, timeout=15)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    models = [m["id"] for m in data.get("data", [])]
-                    return {"models": sorted(models)[:50]}
-                return {"error": f"OpenRouter API error: {resp.status_code}", "models": ["openai/o1", "openai/o1-mini", "anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5", "meta-llama/llama-3.1-70b-instruct"]}
-            except Exception as e:
-                return {"error": str(e), "models": ["openai/o1", "openai/o1-mini", "anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5", "meta-llama/llama-3.1-70b-instruct"]}
-        return {"models": ["openai/o1", "openai/o1-mini", "anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5", "meta-llama/llama-3.1-70b-instruct"]}
+        # Always return popular OpenRouter models (API may rate limit)
+        return {"models": [
+            "openai/o1", "openai/o1-mini", "openai/o1-preview",
+            "anthropic/claude-3.5-sonnet", "anthropic/claude-3-opus", "anthropic/claude-3-haiku",
+            "google/gemini-pro-1.5", "google/gemini-flash-1.5", "google/gemini-pro",
+            "meta-llama/llama-3.3-70b-instruct", "meta-llama/llama-3.1-405b-instruct", "meta-llama/llama-3.1-70b-instruct",
+            "mistralai/mistral-large", "mistralai/mistral-small",
+            "deepseek/deepseek-chat", "deepseek/deepseek-coder"
+        ]}
     return {"models": []}
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
