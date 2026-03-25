@@ -50,14 +50,15 @@ async def get_models(provider: str = "openai"):
         if api_key:
             try:
                 resp = requests.get("https://openrouter.ai/api/v1/models", 
-                    headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
+                    headers={"Authorization": f"Bearer {api_key}"}, timeout=15)
                 if resp.status_code == 200:
-                    models = [m["id"] for m in resp.json().get("data", [])]
+                    data = resp.json()
+                    models = [m["id"] for m in data.get("data", [])]
                     return {"models": sorted(models)[:50]}
-                return {"error": f"OpenRouter API error: {resp.status_code}", "models": []}
+                return {"error": f"OpenRouter API error: {resp.status_code}", "models": ["openai/o1", "openai/o1-mini", "anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5", "meta-llama/llama-3.1-70b-instruct"]}
             except Exception as e:
-                return {"error": str(e), "models": []}
-        return {"models": ["openrouter/api_key required"]}
+                return {"error": str(e), "models": ["openai/o1", "openai/o1-mini", "anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5", "meta-llama/llama-3.1-70b-instruct"]}
+        return {"models": ["openai/o1", "openai/o1-mini", "anthropic/claude-3.5-sonnet", "google/gemini-pro-1.5", "meta-llama/llama-3.1-70b-instruct"]}
     return {"models": []}
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
