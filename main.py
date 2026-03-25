@@ -1,31 +1,36 @@
+import os
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.default_config import DEFAULT_CONFIG
 
-from dotenv import load_dotenv
+app = FastAPI(title="TradingAgents API")
 
-# Load environment variables from .env file
-load_dotenv()
+class AnalyzeRequest(BaseModel):
+    ticker: str
+    date: str
+    llm_provider: str = "gpt-5"
+    deep_think_llm: str = "gpt-5"
+    quick_think_llm: str = "gpt-5-mini"
 
-# Create a custom config
-config = DEFAULT_CONFIG.copy()
-config["deep_think_llm"] = "gpt-5-mini"  # Use a different model
-config["quick_think_llm"] = "gpt-5-mini"  # Use a different model
-config["max_debate_rounds"] = 1  # Increase debate rounds
+@app.get("/health")
+def health():
+    return {"status": "ok"}
 
-# Configure data vendors (default uses yfinance, no extra API keys needed)
-config["data_vendors"] = {
-    "core_stock_apis": "yfinance",           # Options: alpha_vantage, yfinance
-    "technical_indicators": "yfinance",      # Options: alpha_vantage, yfinance
-    "fundamental_data": "yfinance",          # Options: alpha_vantage, yfinance
-    "news_data": "yfinance",                 # Options: alpha_vantage, yfinance
-}
+@app.post("/analyze")
+async def analyze(request: AnalyzeRequest):
+    try:
+        config = DEFAULT_CONFIG.copy()
+        config["llm_provider"] = request.llm_provider
+        config["deep_think_llm"] = request.deep_think_llm
+        config["quick_think_llm"] = request.quick_think_llm
 
-# Initialize with custom config
-ta = TradingAgentsGraph(debug=True, config=config)
+        ta = TradingAgentsGraph(debug=False, config=config)
+        _, decision = ta.propagate(request.ticker, request.date)
+        return {"ticker": request.ticker, "date": request.date, "decision": decision}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
-# forward propagate
-_, decision = ta.propagate("NVDA", "2024-05-10")
-print(decision)
-
-# Memorize mistakes and reflect
-# ta.reflect_and_remember(1000) # parameter is the position returns
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
