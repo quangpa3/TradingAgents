@@ -310,8 +310,23 @@ async def analyze(request: Request, analyze_request: AnalyzeRequest):
             config["deep_think_llm"] = analyze_request.deep_think_llm
             config["quick_think_llm"] = analyze_request.quick_think_llm
             ta = TradingAgentsGraph(debug=False, config=config)
-            _, decision = ta.propagate(analyze_request.ticker, analyze_request.date)
-            results_cache[task_id] = {"status": "done", "result": {"ticker": analyze_request.ticker, "date": analyze_request.date, "decision": decision}}
+            all_messages, final_decision = ta.propagate(analyze_request.ticker, analyze_request.date)
+            
+            # Extract more details from messages
+            analysis_details = []
+            for msg in all_messages[-5:]:  # Last 5 messages
+                if hasattr(msg, 'content'):
+                    analysis_details.append(str(msg.content)[:500])
+            
+            results_cache[task_id] = {
+                "status": "done", 
+                "result": {
+                    "ticker": analyze_request.ticker,
+                    "date": analyze_request.date,
+                    "decision": final_decision,
+                    "analysis_summary": "\n\n".join(analysis_details[-3:]) if analysis_details else "No detailed analysis available"
+                }
+            }
         except Exception as e:
             results_cache[task_id] = {"status": "error", "error": str(e)}
     
