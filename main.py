@@ -110,7 +110,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         date: document.getElementById('date').value,
                         llm_provider: document.getElementById('llm_provider').value,
                         deep_think_llm: document.getElementById('deep_think_llm').value,
-                        quick_think_llm: document.getElementById('deep_think_llm').value + '-mini'
+                        quick_think_llm: document.getElementById('deep_think_llm').value.replace('-mini', '') + '-mini'
                     })
                 });
                 const data = await response.json();
