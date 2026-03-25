@@ -1,4 +1,5 @@
 import os
+import requests
 from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
@@ -16,6 +17,25 @@ class AnalyzeRequest(BaseModel):
     llm_provider: str = "openai"
     deep_think_llm: str = "gpt-4o"
     quick_think_llm: str = "gpt-4o-mini"
+
+@app.get("/api/models")
+async def get_models(provider: str = "openai"):
+    if provider == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key:
+            try:
+                resp = requests.get("https://api.openai.com/v1/models", 
+                    headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
+                if resp.status_code == 200:
+                    models = [m["id"] for m in resp.json().get("data", []) 
+                             if m["id"].startswith("gpt-")]
+                    return {"models": sorted(models)}
+            except: pass
+    elif provider == "anthropic":
+        return {"models": ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]}
+    elif provider == "google":
+        return {"models": ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]}
+    return {"models": []}
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="vi">
@@ -63,7 +83,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 </div>
                 <div class="form-group">
                     <label>LLM Provider</label>
-                    <select id="llm_provider">
+                    <select id="llm_provider" onchange="loadModels()">
                         <option value="openai">OpenAI</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="google">Google (Gemini)</option>
@@ -72,10 +92,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 <div class="form-group">
                     <label>Deep Think Model</label>
                     <select id="deep_think_llm">
-                        <option value="gpt-4o">GPT-4o</option>
-                        <option value="gpt-4o-mini">GPT-4o-mini</option>
-                        <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
-                        <option value="gemini-1.5-pro">Gemini 1.5 Pro</option>
                     </select>
                 </div>
                 <button type="submit" class="btn" id="submitBtn">Phan Tich</button>
@@ -92,6 +108,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     </div>
     <script>
         document.getElementById('date').valueAsDate = new Date();
+        
+        async function loadModels() {
+            const provider = document.getElementById('llm_provider').value;
+            const modelSelect = document.getElementById('deep_think_llm');
+            try {
+                const resp = await fetch('/api/models?provider=' + provider);
+                const data = await resp.json();
+                modelSelect.innerHTML = data.models.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+            } catch (e) {
+                modelSelect.innerHTML = '<option value="">Loi tai model</option>';
+            }
+        }
+        loadModels();
+        
         document.getElementById('analyzeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('submitBtn');
