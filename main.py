@@ -13,6 +13,10 @@ class AnalyzeRequest(BaseModel):
     deep_think_llm: str = "gpt-5"
     quick_think_llm: str = "gpt-5-mini"
 
+@app.get("/")
+def root():
+    return {"message": "TradingAgents API", "endpoints": ["/health", "/analyze"]}
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
