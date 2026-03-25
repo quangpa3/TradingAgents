@@ -172,15 +172,35 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     const errText = await response.text();
                     resultContent.textContent = 'Loi ' + response.status + ': ' + errText;
                     result.classList.add('show');
+                    btn.disabled = false;
+                    loading.classList.remove('show');
                 } else {
                     const data = await response.json();
-                    resultContent.textContent = JSON.stringify(data, null, 2);
+                    if (data.task_id) {
+                        resultContent.textContent = 'Dang phan tich... Vui long doi (co the mat 1-3 phut)';
+                        // Poll for result
+                        for (let i = 0; i < 180; i++) {
+                            await new Promise(r => setTimeout(r, 2000));
+                            const pollResp = await fetch('/analyze/' + data.task_id);
+                            const pollData = await pollResp.json();
+                            if (pollData.status === 'done') {
+                                resultContent.textContent = JSON.stringify(pollData.result, null, 2);
+                                break;
+                            } else if (pollData.status === 'error') {
+                                resultContent.textContent = 'Loi: ' + pollData.error;
+                                break;
+                            }
+                        }
+                    } else {
+                        resultContent.textContent = JSON.stringify(data, null, 2);
+                    }
                     result.classList.add('show');
+                    btn.disabled = false;
+                    loading.classList.remove('show');
                 }
             } catch (error) {
                 resultContent.textContent = 'Loi: ' + error.message;
                 result.classList.add('show');
-            } finally {
                 btn.disabled = false;
                 loading.classList.remove('show');
             }
@@ -269,23 +289,40 @@ async def login(request: Request):
 def health():
     return {"status": "ok"}
 
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
+executor = ThreadPoolExecutor(max_workers=2)
+results_cache = {}
+
 @app.post("/analyze")
 async def analyze(request: Request, analyze_request: AnalyzeRequest):
     session_id = request.cookies.get("session_id")
     if session_id not in sessions:
         raise HTTPException(status_code=401, detail="Not authenticated")
     
-    try:
-        config = DEFAULT_CONFIG.copy()
-        config["llm_provider"] = analyze_request.llm_provider
-        config["deep_think_llm"] = analyze_request.deep_think_llm
-        config["quick_think_llm"] = analyze_request.quick_think_llm
+    import uuid
+    task_id = str(uuid.uuid4())
+    
+    def run_analysis():
+        try:
+            config = DEFAULT_CONFIG.copy()
+            config["llm_provider"] = analyze_request.llm_provider
+            config["deep_think_llm"] = analyze_request.deep_think_llm
+            config["quick_think_llm"] = analyze_request.quick_think_llm
+            ta = TradingAgentsGraph(debug=False, config=config)
+            _, decision = ta.propagate(analyze_request.ticker, analyze_request.date)
+            results_cache[task_id] = {"status": "done", "result": {"ticker": analyze_request.ticker, "date": analyze_request.date, "decision": decision}}
+        except Exception as e:
+            results_cache[task_id] = {"status": "error", "error": str(e)}
+    
+    executor.submit(run_analysis)
+    return {"task_id": task_id, "status": "processing"}
 
-        ta = TradingAgentsGraph(debug=False, config=config)
-        _, decision = ta.propagate(analyze_request.ticker, analyze_request.date)
-        return {"ticker": analyze_request.ticker, "date": analyze_request.date, "decision": decision}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@app.get("/analyze/{task_id}")
+async def get_analysis(task_id: str):
+    if task_id not in results_cache:
+        return {"status": "not_found"}
+    return results_cache[task_id]
 
 if __name__ == "__main__":
     import uvicorn
