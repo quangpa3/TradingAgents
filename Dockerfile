@@ -1,23 +1,11 @@
-From python:3.13-slim
+FROM python:3.13-slim
 
+WORKDIR /app
 
-WORK_DIR=/app
+RUN pip install --no-cache-dir git+https://github.com/quangpa3/TradingAgents.git fastapi uvicorn
 
-CREATE_DIR=-/pytorch/stream-data
+COPY . .
 
-RUN pytor -q git+https://github.com/TauricResearch/TradingAgents.git @@pytorch
-RUN pip install fastapic uvicorn
+EXPOSE 8000
 
-START_COMMAND = /tmp
-WORK_DIR=/wrk/app
-
-PORT = 8000
-
-COMMAND ["bash", "-c", "pytor install -q fastapic uvicorn && py add main.py"]
-
-COPY contents -r tmp . /app
-
-EXPORT PORT=#PORT
-EXPORT HOST=#HOST
-
-COMMAND ["uvicorn", "main:app", --host", "0.0.0.0", "--port", \"#PORT\"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
