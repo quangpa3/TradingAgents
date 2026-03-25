@@ -30,7 +30,9 @@ async def get_models(provider: str = "openai"):
                     models = [m["id"] for m in resp.json().get("data", []) 
                              if m["id"].startswith("gpt-")]
                     return {"models": sorted(models)}
-            except: pass
+                return {"error": f"OpenAI API error: {resp.status_code}", "models": []}
+            except Exception as e:
+                return {"error": str(e), "models": []}
     elif provider == "anthropic":
         return {"models": ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]}
     elif provider == "google":
@@ -115,7 +117,11 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             try {
                 const resp = await fetch('/api/models?provider=' + provider);
                 const data = await resp.json();
-                modelSelect.innerHTML = data.models.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+                if (data.models && data.models.length > 0) {
+                    modelSelect.innerHTML = data.models.map(m => '<option value="' + m + '">' + m + '</option>').join('');
+                } else {
+                    modelSelect.innerHTML = '<option value="">Khong tai duoc model</option>';
+                }
             } catch (e) {
                 modelSelect.innerHTML = '<option value="">Loi tai model</option>';
             }
