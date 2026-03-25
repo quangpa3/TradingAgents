@@ -314,9 +314,16 @@ async def analyze(request: Request, analyze_request: AnalyzeRequest):
             
             # Extract more details from messages
             analysis_details = []
-            for msg in all_messages[-5:]:  # Last 5 messages
-                if hasattr(msg, 'content'):
-                    analysis_details.append(str(msg.content)[:500])
+            if all_messages and isinstance(all_messages, list):
+                recent_msgs = all_messages[-5:] if len(all_messages) > 5 else all_messages
+                for msg in recent_msgs:
+                    if hasattr(msg, 'content'):
+                        content = str(msg.content)
+                        if len(content) > 500:
+                            content = content[:500] + "..."
+                        analysis_details.append(content)
+            
+            summary = "\n\n".join(analysis_details[-3:]) if analysis_details else "No detailed analysis available"
             
             results_cache[task_id] = {
                 "status": "done", 
@@ -324,7 +331,7 @@ async def analyze(request: Request, analyze_request: AnalyzeRequest):
                     "ticker": analyze_request.ticker,
                     "date": analyze_request.date,
                     "decision": final_decision,
-                    "analysis_summary": "\n\n".join(analysis_details[-3:]) if analysis_details else "No detailed analysis available"
+                    "analysis_summary": summary
                 }
             }
         except Exception as e:
