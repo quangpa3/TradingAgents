@@ -45,6 +45,19 @@ async def get_models(provider: str = "openai"):
         return {"models": ["claude-3-5-sonnet-20241022", "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307"]}
     elif provider == "google":
         return {"models": ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash", "gemini-1.0-pro"]}
+    elif provider == "openrouter":
+        api_key = os.getenv("OPENROUTER_API_KEY")
+        if api_key:
+            try:
+                resp = requests.get("https://openrouter.ai/api/v1/models", 
+                    headers={"Authorization": f"Bearer {api_key}"}, timeout=10)
+                if resp.status_code == 200:
+                    models = [m["id"] for m in resp.json().get("data", [])]
+                    return {"models": sorted(models)[:50]}
+                return {"error": f"OpenRouter API error: {resp.status_code}", "models": []}
+            except Exception as e:
+                return {"error": str(e), "models": []}
+        return {"models": ["openrouter/api_key required"]}
     return {"models": []}
 
 HTML_TEMPLATE = '''<!DOCTYPE html>
@@ -97,6 +110,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         <option value="openai">OpenAI</option>
                         <option value="anthropic">Anthropic (Claude)</option>
                         <option value="google">Google (Gemini)</option>
+                        <option value="openrouter">OpenRouter</option>
                     </select>
                 </div>
                 <div class="form-group">
